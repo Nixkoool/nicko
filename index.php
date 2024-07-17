@@ -1,9 +1,18 @@
 <?php
-session_start(); // Start or resume session
+session_start();
 
-// Initialize tasks array in session if not already set
-if (!isset($_SESSION['tasks'])) {
-    $_SESSION['tasks'] = [];
+// Database connection parameters
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "mario_todo_app";
+
+// Create connection
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
 }
 
 // Handle form submissions (create, update, delete)
@@ -11,25 +20,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($_POST['action'] == 'create') {
         $task = $_POST['task'];
         if (!empty($task)) {
-            $_SESSION['tasks'][] = $task;
+            $stmt = $conn->prepare("INSERT INTO tasks (task) VALUES (?)");
+            $stmt->bind_param("s", $task);
+            $stmt->execute();
+            $stmt->close();
         }
     } elseif ($_POST['action'] == 'delete') {
-        $index = $_POST['index'];
-        // Check if index exists before deleting
-        if (isset($_SESSION['tasks'][$index])) {
-            unset($_SESSION['tasks'][$index]);
-            // Reset array keys to maintain sequential numbering
-            $_SESSION['tasks'] = array_values($_SESSION['tasks']);
-        }
+        $id = $_POST['id'];
+        $stmt = $conn->prepare("DELETE FROM tasks WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $stmt->close();
     } elseif ($_POST['action'] == 'update') {
-        $index = $_POST['index'];
+        $id = $_POST['id'];
         $task = $_POST['task'];
-        // Check if index exists before updating
-        if (isset($_SESSION['tasks'][$index]) && !empty($task)) {
-            $_SESSION['tasks'][$index] = $task;
+        if (!empty($task)) {
+            $stmt = $conn->prepare("UPDATE tasks SET task = ? WHERE id = ?");
+            $stmt->bind_param("si", $task, $id);
+            $stmt->execute();
+            $stmt->close();
         }
     }
 }
+
+// Fetch tasks from the database
+$result = $conn->query("SELECT * FROM tasks");
+$tasks = [];
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $tasks[] = $row;
+    }
+}
+$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -48,14 +70,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <ul>
             <li><a href="index.html#overview">Overview</a></li>
             <li><a href="index.html#features">Features</a></li>
-            <li><a href="index.php">Home</a></li>
+            <li><a href="home.html">Home</a></li>
         </ul>
     </nav>
 
     <center>
         <h1>Mario To-do App</h1>
         <p>Level up your task management!</p>
-    </center>        
+    </center>
 
     <main class="container">
         <form action="index.php" method="POST">
@@ -65,24 +87,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </form>
 
         <ul>
-            <?php foreach ($_SESSION['tasks'] as $index => $task): ?>
+            <?php foreach ($tasks as $task): ?>
                 <li>
                     <form action="index.php" method="POST" style="display:inline;">
-                        <input type="text" name="task" value="<?php echo htmlspecialchars($task); ?>">
+                        <input type="text" name="task" value="<?php echo htmlspecialchars($task['task']); ?>">
                         <input type="hidden" name="action" value="update">
-                        <input type="hidden" name="index" value="<?php echo $index; ?>">
+                        <input type="hidden" name="id" value="<?php echo $task['id']; ?>">
                         <button type="submit">Update</button>
                     </form>
                     <form action="index.php" method="POST" style="display:inline;">
                         <input type="hidden" name="action" value="delete">
-                        <input type="hidden" name="index" value="<?php echo $index; ?>">
+                        <input type="hidden" name="id" value="<?php echo $task['id']; ?>">
                         <button type="submit">Delete</button>
                     </form>
-                    <a href="display_task.php?index=<?php echo $index; ?>">Details</a>
+                    <a href="display_task.php?id=<?php echo $task['id']; ?>">Details</a>
                 </li>
             <?php endforeach; ?>
         </ul>
     </main>
-
 </body>
 </html>
