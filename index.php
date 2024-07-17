@@ -70,7 +70,7 @@ $conn->close();
         <ul>
             <li><a href="index.html#overview">Overview</a></li>
             <li><a href="index.html#features">Features</a></li>
-            <li><a href="home.html">Home</a></li>
+            <li><a href="nickomerete.infinityfreeapp.com">Home</a></li>
         </ul>
     </nav>
 
